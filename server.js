@@ -104,14 +104,18 @@ const PORT = process.env.PORT || 3000;
 const cron = require('node-cron');
 
 // ----------------------------------------------------
-// ROUTE 4: Admin Dashboard Data
+// ROUTE 4: Admin Dashboard Data (SECURE)
 // ----------------------------------------------------
 app.get('/api/dashboard', async (req, res) => {
+    // 🔒 SECURITY CHECK: Verify the password sent from the frontend
+    const clientPassword = req.headers['x-admin-password'];
+    
+    if (clientPassword !== process.env.ADMIN_PASSWORD) {
+        return res.status(401).json({ error: 'Access Denied: Incorrect Password' });
+    }
+
     try {
-        // Fetch all tenants
         const { data: tenants } = await supabase.from('tenants').select('*');
-        
-        // Fetch unpaid invoices and join the tenant name from the leases table
         const { data: invoices } = await supabase
             .from('invoices')
             .select(`invoice_id, amount_due, due_date, leases ( tenants ( name ) )`)
