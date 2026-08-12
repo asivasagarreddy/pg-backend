@@ -1,8 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const cors = require('cors');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -100,6 +102,26 @@ app.post('/api/webhook/sms', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 const cron = require('node-cron');
+
+// ----------------------------------------------------
+// ROUTE 4: Admin Dashboard Data
+// ----------------------------------------------------
+app.get('/api/dashboard', async (req, res) => {
+    try {
+        // Fetch all tenants
+        const { data: tenants } = await supabase.from('tenants').select('*');
+        
+        // Fetch unpaid invoices and join the tenant name from the leases table
+        const { data: invoices } = await supabase
+            .from('invoices')
+            .select(`invoice_id, amount_due, due_date, leases ( tenants ( name ) )`)
+            .eq('status', 'Unpaid');
+
+        res.json({ tenants, invoices });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    }
+});
 
 // ----------------------------------------------------
 // AUTOMATED BILLING ENGINE (Runs at 00:00 on the 1st of every month)
